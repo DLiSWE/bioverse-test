@@ -95,7 +95,7 @@ export default function AdminPanelPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto mt-10 px-4">
+    <div className="max-w-5xl mx-auto mt-10 px-8">
       <h1 className="text-4xl font-bold text-center mb-8">Admin Panel</h1>
 
       <Card className="p-6">

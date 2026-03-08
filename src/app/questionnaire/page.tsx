@@ -32,7 +32,7 @@ export default function QuestionnaireSelectionPage() {
   }, [user, router]);
 
   return (
-    <div className="max-w-2xl mx-auto mt-10">
+    <div className="max-w-2xl mx-auto mt-10 p-8">
       <h1 className="text-4xl font-bold text-center mb-8">
         Select a Questionnaire
       </h1>
