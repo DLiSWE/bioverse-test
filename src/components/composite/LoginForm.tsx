@@ -3,18 +3,16 @@
 import { useState, type SubmitEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { useAuth } from "@/context/AuthContext";
+import { Role } from "@/types/User";
 
-const ADMIN_USERNAME = process.env.NEXT_PUBLIC_ADMIN_USERNAME;
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
-const USER_USERNAME = process.env.NEXT_PUBLIC_USER_USERNAME;
-const USER_PASSWORD = process.env.NEXT_PUBLIC_USER_PASSWORD;
+import { useAuth } from "@/context/AuthContext";
+import { redirect } from "next/navigation";
+
+const userList = [
+  { username: "admin", password: "admin123", role: Role.ADMIN },
+  { username: "user", password: "user123", role: Role.USER },
+  { username: "testuser", password: "testpassword", role: Role.USER },
+];
 
 export default function LoginForm() {
   const { login } = useAuth();
@@ -29,44 +27,51 @@ export default function LoginForm() {
     setLoading(true);
     setErrorMessage("");
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
 
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      login({
-        username,
-        role: "ADMIN",
-      });
-
-      setUsername("");
-      setPassword("");
+    if (!trimmedUsername || !trimmedPassword) {
       setLoading(false);
-      return;
-    } else if (username === USER_USERNAME && password === USER_PASSWORD) {
-      login({
-        username,
-        role: "USER",
-      });
-
-      setUsername("");
-      setPassword("");
-      setLoading(false);
+      setErrorMessage("Username and password are required");
       return;
     }
 
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const matchedUser = userList.find(
+      (u) => u.username === trimmedUsername && u.password === trimmedPassword,
+    );
+
+    if (!matchedUser) {
+      setLoading(false);
+      setErrorMessage("Invalid credentials");
+      return;
+    }
+
+    login({
+      username: matchedUser.username,
+      role: matchedUser.role,
+    });
+
+    setUsername("");
+    setPassword("");
     setLoading(false);
-    setErrorMessage("Invalid credentials");
+
+    if (matchedUser.role === Role.ADMIN) {
+      redirect("/admin-panel");
+    }
+
+    redirect("/questionnaire");
   };
 
   return (
     <form onSubmit={handleLogin} className="space-y-4">
-      <DialogHeader>
-        <DialogTitle>Login</DialogTitle>
-        <DialogDescription>
-          Enter your username and password to sign in.
-        </DialogDescription>
-      </DialogHeader>
+      <h2 className="text-lg font-semibold">Login</h2>
+      <p className="text-sm text-muted-foreground">
+        Enter your username and password to sign in.
+      </p>
 
-      <div className="space-y-2">
+      <div className="flex flex-col space-y-2">
         <label htmlFor="username" className="text-sm font-medium">
           Username
         </label>
@@ -80,7 +85,7 @@ export default function LoginForm() {
         />
       </div>
 
-      <div className="space-y-2">
+      <div className="flex flex-col space-y-2">
         <label htmlFor="password" className="text-sm font-medium">
           Password
         </label>
@@ -98,11 +103,9 @@ export default function LoginForm() {
         <p className="text-sm text-red-500">{errorMessage}</p>
       ) : null}
 
-      <DialogFooter>
-        <Button type="submit" disabled={loading} className="w-full">
-          {loading ? "Logging in..." : "Login"}
-        </Button>
-      </DialogFooter>
+      <Button type="submit" disabled={loading} className="w-full">
+        {loading ? "Logging in..." : "Login"}
+      </Button>
     </form>
   );
 }

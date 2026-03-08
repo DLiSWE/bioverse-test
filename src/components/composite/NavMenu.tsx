@@ -1,6 +1,6 @@
 "use client";
+
 import Link from "next/link";
-import { useState } from "react";
 import {
   NavigationMenu,
   NavigationMenuList,
@@ -9,12 +9,17 @@ import {
 } from "@/components/ui/navigation-menu";
 import { useAuth } from "@/context/AuthContext";
 import { Role } from "@/types/User";
-import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
-import LoginForm from "./LoginForm";
+import { useRouter } from "next/navigation";
 
 export default function NavMenu() {
   const { user, logout } = useAuth();
+  const router = useRouter();
+
+  const logoutRedirect = () => {
+    logout();
+    router.push("/");
+  };
 
   return (
     <NavigationMenu>
@@ -24,13 +29,15 @@ export default function NavMenu() {
             <Link href="/">Home</Link>
           </NavigationMenuLink>
         </NavigationMenuItem>
-        <NavigationMenuItem>
-          {user && (
+
+        {user && (
+          <NavigationMenuItem>
             <NavigationMenuLink asChild>
               <Link href="/questionnaire">Questionnaire</Link>
             </NavigationMenuLink>
-          )}
-        </NavigationMenuItem>
+          </NavigationMenuItem>
+        )}
+
         {user?.role === Role.ADMIN && (
           <NavigationMenuItem>
             <NavigationMenuLink asChild>
@@ -38,28 +45,16 @@ export default function NavMenu() {
             </NavigationMenuLink>
           </NavigationMenuItem>
         )}
+
         {!user ? (
           <NavigationMenuItem>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="secondary" className="px-4 py-2 text-sm">
-                  Login
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <div className="flex flex-col space-y-2">
-                  <LoginForm />
-                </div>
-              </DialogContent>
-            </Dialog>
+            <NavigationMenuLink asChild>
+              <Link href="/login">Login</Link>
+            </NavigationMenuLink>
           </NavigationMenuItem>
         ) : (
           <NavigationMenuItem>
-            <Button
-              variant="secondary"
-              className="px-4 py-2 text-sm"
-              onClick={logout}
-            >
+            <Button variant="secondary" onClick={logoutRedirect}>
               Logout
             </Button>
           </NavigationMenuItem>
