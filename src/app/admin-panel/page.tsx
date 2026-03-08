@@ -5,20 +5,48 @@ import { useAuth } from "@/context/AuthContext";
 import { Role } from "@/types/User";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-type AdminAnswerRow = {
-  id: number;
-  username: string;
-  questionnaire_name: string;
-  question_text: string;
+type QuestionnaireAnswer = {
+  question: string;
   answer: string | string[];
-  created_at: string;
+};
+
+type UserQuestionnaire = {
+  questionnaireName: string;
+  submittedAt: string;
+  answers: QuestionnaireAnswer[];
+};
+
+type AdminUserSummary = {
+  username: string;
+  completedCount: number;
+  questionnaires: UserQuestionnaire[];
 };
 
 export default function AdminPanelPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [rows, setRows] = useState<AdminAnswerRow[]>([]);
+
+  const [users, setUsers] = useState<AdminUserSummary[]>([]);
+  const [selectedUser, setSelectedUser] = useState<AdminUserSummary | null>(
+    null,
+  );
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -31,16 +59,35 @@ export default function AdminPanelPage() {
       return;
     }
 
-    async function loadAnswers() {
-      const res = await fetch("/api/admin");
-      const data = await res.json();
+    async function loadAdminData() {
+      try {
+        setLoading(true);
+        setErrorMessage("");
 
-      if (Array.isArray(data)) {
-        setRows(data);
+        const res = await fetch("/api/admin");
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          setErrorMessage(errorData.error ?? "Failed to load admin data");
+          return;
+        }
+
+        const data = await res.json();
+
+        if (Array.isArray(data)) {
+          setUsers(data);
+        } else {
+          setUsers([]);
+        }
+      } catch (error) {
+        console.error(error);
+        setErrorMessage("Something went wrong while loading admin data");
+      } finally {
+        setLoading(false);
       }
     }
 
-    loadAnswers();
+    loadAdminData();
   }, [user, router]);
 
   if (!user || user.role !== Role.ADMIN) {
@@ -48,33 +95,98 @@ export default function AdminPanelPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto mt-10">
+    <div className="max-w-5xl mx-auto mt-10 px-4">
       <h1 className="text-4xl font-bold text-center mb-8">Admin Panel</h1>
 
-      <div className="space-y-4 mb-10">
-        {rows.map((row) => (
-          <Card key={row.id} className="p-4 space-y-2">
-            <p>
-              <span className="font-semibold">User:</span> {row.username}
-            </p>
-            <p>
-              <span className="font-semibold">Questionnaire:</span>{" "}
-              {row.questionnaire_name}
-            </p>
-            <p>
-              <span className="font-semibold">Question:</span>{" "}
-              {row.question_text}
-            </p>
-            <p>
-              <span className="font-semibold">Answer:</span>{" "}
-              {Array.isArray(row.answer) ? row.answer.join(", ") : row.answer}
-            </p>
-            <p className="text-sm text-gray-500">
-              Submitted: {new Date(row.created_at).toLocaleString()}
-            </p>
-          </Card>
-        ))}
-      </div>
+      <Card className="p-6">
+        <h2 className="text-2xl font-semibold mb-4">
+          Questionnaire Completion Summary
+        </h2>
+
+        {loading ? (
+          <p>Loading...</p>
+        ) : errorMessage ? (
+          <p className="text-red-500">{errorMessage}</p>
+        ) : users.length === 0 ? (
+          <p>No questionnaire submissions found.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Username</TableHead>
+                <TableHead>Completed Questionnaires</TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {users.map((userSummary) => (
+                <TableRow
+                  key={userSummary.username}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => setSelectedUser(userSummary)}
+                >
+                  <TableCell>{userSummary.username}</TableCell>
+                  <TableCell>{userSummary.completedCount}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Card>
+
+      <Dialog
+        open={!!selectedUser}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedUser(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedUser ? `${selectedUser.username}'s Answers` : "Answers"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {selectedUser?.questionnaires.map((questionnaire, index) => (
+              <Card key={index} className="p-4 space-y-4">
+                <div className="space-y-1">
+                  <p>
+                    <span className="font-semibold">Username:</span>{" "}
+                    {selectedUser.username}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Questionnaire:</span>{" "}
+                    {questionnaire.questionnaireName}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Submitted:{" "}
+                    {new Date(questionnaire.submittedAt).toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {questionnaire.answers.map((qa, qaIndex) => (
+                    <div key={qaIndex} className="rounded-md border p-3">
+                      <p>
+                        <span className="font-semibold">Q:</span> {qa.question}
+                      </p>
+                      <p>
+                        <span className="font-semibold">A:</span>{" "}
+                        {Array.isArray(qa.answer)
+                          ? qa.answer.join(", ")
+                          : qa.answer}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

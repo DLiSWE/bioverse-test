@@ -2,6 +2,25 @@
 import { supabase } from "@/lib/supabase/client";
 import { NextResponse } from "next/server";
 
+type AnswerRow = {
+  id: number;
+  username: string;
+  questionnaire_id: number;
+  question_id: number;
+  answer: string | string[];
+  created_at: string;
+};
+
+type QuestionnaireRow = {
+  id: number;
+  name: string;
+};
+
+type QuestionRow = {
+  id: number;
+  question: string | { question?: string };
+};
+
 export async function GET() {
   const { data: answers, error: answersError } = await supabase
     .from("questionnaire_answers")
@@ -12,8 +31,16 @@ export async function GET() {
     return NextResponse.json({ error: answersError.message }, { status: 500 });
   }
 
-  const questionnaireIds = [...new Set(answers.map((a) => a.questionnaire_id))];
-  const questionIds = [...new Set(answers.map((a) => a.question_id))];
+  const typedAnswers = (answers ?? []) as AnswerRow[];
+
+  if (typedAnswers.length === 0) {
+    return NextResponse.json([]);
+  }
+
+  const questionnaireIds = [
+    ...new Set(typedAnswers.map((a) => a.questionnaire_id)),
+  ];
+  const questionIds = [...new Set(typedAnswers.map((a) => a.question_id))];
 
   const { data: questionnaires, error: questionnairesError } = await supabase
     .from("questionnaire_questionnaires")
@@ -39,27 +66,87 @@ export async function GET() {
     );
   }
 
-  const formatted = answers.map((answerRow) => {
-    const questionnaire = questionnaires.find(
-      (q) => q.id === answerRow.questionnaire_id,
+  const typedQuestionnaires = (questionnaires ?? []) as QuestionnaireRow[];
+  const typedQuestions = (questions ?? []) as QuestionRow[];
+
+  const questionnaireMap = new Map<number, string>();
+  for (const questionnaire of typedQuestionnaires) {
+    questionnaireMap.set(questionnaire.id, questionnaire.name);
+  }
+
+  const questionMap = new Map<number, string>();
+  for (const question of typedQuestions) {
+    const questionText =
+      typeof question.question === "string"
+        ? question.question
+        : (question.question?.question ?? "Unknown Question");
+
+    questionMap.set(question.id, questionText);
+  }
+
+  const groupedUsers: Record<
+    string,
+    {
+      username: string;
+      completedCount: number;
+      questionnaires: {
+        questionnaireName: string;
+        submittedAt: string;
+        answers: {
+          question: string;
+          answer: string | string[];
+        }[];
+      }[];
+    }
+  > = {};
+
+  for (const answerRow of typedAnswers) {
+    const username = answerRow.username;
+    const questionnaireName =
+      questionnaireMap.get(answerRow.questionnaire_id) ??
+      "Unknown Questionnaire";
+    const questionText =
+      questionMap.get(answerRow.question_id) ?? "Unknown Question";
+
+    if (!groupedUsers[username]) {
+      groupedUsers[username] = {
+        username,
+        completedCount: 0,
+        questionnaires: [],
+      };
+    }
+
+    const userGroup = groupedUsers[username];
+
+    // Temporary grouping strategy:
+    // treat rows with the same username + questionnaire_id + created_at
+    // as one questionnaire submission
+    const existingQuestionnaire = userGroup.questionnaires.find(
+      (q) =>
+        q.questionnaireName === questionnaireName &&
+        q.submittedAt === answerRow.created_at,
     );
 
-    const question = questions.find((q) => q.id === answerRow.question_id);
+    if (existingQuestionnaire) {
+      existingQuestionnaire.answers.push({
+        question: questionText,
+        answer: answerRow.answer,
+      });
+    } else {
+      userGroup.questionnaires.push({
+        questionnaireName,
+        submittedAt: answerRow.created_at,
+        answers: [
+          {
+            question: questionText,
+            answer: answerRow.answer,
+          },
+        ],
+      });
 
-    return {
-      id: answerRow.id,
-      username: answerRow.username,
-      questionnaire_name: questionnaire?.name ?? "Unknown Questionnaire",
-      question_text:
-        typeof question?.question === "object" &&
-        question?.question !== null &&
-        "question" in question.question
-          ? question.question.question
-          : "Unknown Question",
-      answer: answerRow.answer,
-      created_at: answerRow.created_at,
-    };
-  });
+      userGroup.completedCount += 1;
+    }
+  }
 
-  return NextResponse.json(formatted);
+  return NextResponse.json(Object.values(groupedUsers));
 }
