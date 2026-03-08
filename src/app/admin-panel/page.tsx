@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Role } from "@/types/User";
 import { useRouter } from "next/navigation";
+import { Card } from "@/components/ui/card";
 
 type AdminAnswerRow = {
   id: number;
@@ -47,12 +48,12 @@ export default function AdminPanelPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto mt-10 px-4">
+    <div className="max-w-2xl mx-auto mt-10">
       <h1 className="text-4xl font-bold text-center mb-8">Admin Panel</h1>
 
       <div className="space-y-4 mb-10">
         {rows.map((row) => (
-          <div key={row.id} className="border rounded-lg p-4 space-y-2">
+          <Card key={row.id} className="p-4 space-y-2">
             <p>
               <span className="font-semibold">User:</span> {row.username}
             </p>
@@ -71,7 +72,7 @@ export default function AdminPanelPage() {
             <p className="text-sm text-gray-500">
               Submitted: {new Date(row.created_at).toLocaleString()}
             </p>
-          </div>
+          </Card>
         ))}
       </div>
     </div>
