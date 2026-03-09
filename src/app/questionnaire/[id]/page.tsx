@@ -46,7 +46,7 @@ export default function QuestionnairePage() {
         setQuestions(formatted);
 
         const answersRes = await fetch(
-          `/api/questionnaire/${id}/previous-answers?username=${encodeURIComponent(user.username)}`,
+          `/api/questionnaire/${id}/${encodeURIComponent(user.username)}`,
         );
 
         const previousAnswers = await answersRes.json();

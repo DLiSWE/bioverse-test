@@ -1,5 +1,8 @@
 "use client";
 
+import { Input } from "../ui/input";
+import { Checkbox } from "../ui/checkbox";
+
 export type Question = {
   id: number;
   type: "input" | "mcq";
@@ -22,11 +25,7 @@ export default function QuestionRenderer({
     return (
       <div className="space-y-2">
         <p className="font-medium">{question.question}</p>
-        <input
-          className="border p-2 w-full"
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <Input value={value || ""} onChange={(e) => onChange(e.target.value)} />
       </div>
     );
   }
@@ -38,20 +37,16 @@ export default function QuestionRenderer({
 
         {question.options?.map((option) => (
           <label key={option} className="block">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={(value || []).includes(option)}
-              onChange={(e) => {
+              onCheckedChange={(checked) => {
                 const prev = value || [];
-
-                const updated = e.target.checked
+                const updated = checked
                   ? [...prev, option]
                   : prev.filter((o: string) => o !== option);
-
                 onChange(updated);
               }}
             />
-
             <span className="ml-2">{option}</span>
           </label>
         ))}

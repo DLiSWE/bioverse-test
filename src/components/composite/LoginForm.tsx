@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, type SubmitEvent } from "react";
+import { use, useState, type SubmitEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Role } from "@/types/User";
 
 import { useAuth } from "@/context/AuthContext";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 const userList = [
   { username: "admin", password: "admin123", role: Role.ADMIN },
@@ -21,6 +21,7 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const router = useRouter();
 
   const handleLogin = async (e: SubmitEvent) => {
     e.preventDefault();
@@ -58,10 +59,10 @@ export default function LoginForm() {
     setLoading(false);
 
     if (matchedUser.role === Role.ADMIN) {
-      redirect("/admin-panel");
+      router.push("/admin-panel");
     }
 
-    redirect("/questionnaire");
+    router.push("/questionnaire");
   };
 
   return (
