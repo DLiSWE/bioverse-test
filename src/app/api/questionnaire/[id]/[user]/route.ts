@@ -3,14 +3,14 @@ import { supabase } from "@/lib/supabase/client";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string; user: string }> },
 ) {
-  const { searchParams } = new URL(request.url);
-  const username = searchParams.get("username");
+  const { id, user } = await params;
+  const questionnaireId = Number(id);
 
-  if (!username) {
+  if (Number.isNaN(questionnaireId)) {
     return NextResponse.json(
-      { error: "username is required" },
+      { error: "Invalid questionnaire id" },
       { status: 400 },
     );
   }
@@ -18,11 +18,12 @@ export async function GET(
   const { data, error } = await supabase
     .from("questionnaire_answers")
     .select("question_id, answer")
-    .eq("username", username);
+    .eq("questionnaire_id", questionnaireId)
+    .eq("username", user);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json(data ?? []);
 }
